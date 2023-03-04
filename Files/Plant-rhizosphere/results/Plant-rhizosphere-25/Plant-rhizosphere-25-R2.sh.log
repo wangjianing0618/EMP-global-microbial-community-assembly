@@ -1,0 +1,7 @@
+Loading required package: permute
+Loading required package: lattice
+This is vegan 2.5-6
+Now parallel computing. begin at Mon Oct 12 15:55:40 2020. Please wait...
+----now calculating rc atMon Oct 12 16:14:19 2020----
+Warning message:
+'memory.limit()' is Windows-specific 
