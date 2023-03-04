@@ -1,0 +1,116 @@
+##Contact：wangjianing@sdu.edu.cn
+
+##The codes are mainly depended on QIIME2 (https://qiime2.org/)
+##"Plant-rhizosphere" is an example.Replace "Plant-rhizosphere" in the codes to get the ASV-table for another environment (such as Animal surface, Water (saline)).
+##"Plant-rhizosphere.list" is 50 random subsamplings for "Plant rhizosphere" samples.
+##"Plant-rhizosphere.txt" is names for "Plant rhizosphere" samples.
+## "bNTI.R" and "RC.p.R" are codes for community assembly from https://doi.org/10.3389/fevo.2020.00152.
+
+#random subsampling
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+shuf -n40 Files/raw/Plant-rhizosphere.txt > Files/raw/$i.group.txt; sed -i "1iSampleID\tSpecies" Files/raw/$i.group.txt; awk '{print $1}' Files/raw/$i.group.txt > Files/raw/$i.tsv
+done
+
+##filtered using the above sample names
+## ASV-table of random subsamplings
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+qiime feature-table filter-samples --i-table Files/otu-table/Plant-rhizosphere-filtered-table.qza --m-metadata-file Files/raw/$i.tsv --o-filtered-table Files/Plant-rhizosphere/otu/$i.qza; qiime feature-table transpose --i-table Files/Plant-rhizosphere/otu/$i.qza --o-transposed-feature-table Files/Plant-rhizosphere/otu/$i-t.qza; qiime tools export --input-path Files/Plant-rhizosphere/otu/$i-t.qza --output-path Files/Plant-rhizosphere/otu/$i-t-export; biom convert -i Files/Plant-rhizosphere/otu/$i-t-export/feature-table.biom -o Files/Plant-rhizosphere/otu/$i-t-export/$i-t.txt --to-tsv; qiime tools export --input-path Files/Plant-rhizosphere/otu/$i.qza --output-path Files/Plant-rhizosphere/otu/$i-export; biom convert -i Files/Plant-rhizosphere/otu/$i-export/feature-table.biom -o Files/Plant-rhizosphere/otu/$i-export/$i.txt --to-tsv
+done
+
+#ASV sequences of random subsamplings
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+awk '{print $1}' Files/Plant-rhizosphere/otu/$i-export/$i.txt > Files/Plant-rhizosphere/rep/$i.txt
+done
+
+#Phylogenetic tree based on ASV sequences of random subsamplings
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+qiime tools import --input-path Files/Plant-rhizosphere/rep/$i.fa --output-path Files/Plant-rhizosphere/rep/$i.qza --type 'FeatureData[Sequence]'; qiime phylogeny align-to-tree-mafft-fasttree --i-sequences Files/Plant-rhizosphere/rep/$i.qza --o-alignment Files/Plant-rhizosphere/rep/$i-aligned-rep-seqs.qza --o-masked-alignment Files/Plant-rhizosphere/rep/$i-masked-aligned-rep-seqs.qza --o-tree Files/Plant-rhizosphere/rep/$i-unrooted-tree.qza --o-rooted-tree Files/Plant-rhizosphere/rep/$i-rooted-tree.qza; qiime tools export --input-path Files/Plant-rhizosphere/rep/$i-rooted-tree.qza --output-path Files/Plant-rhizosphere/rep/$i-exported-tree
+done
+
+#rename
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+cd Files/Plant-rhizosphere/rep/$i-exported-tree/; rename 's/tree/'$i'/' tree.nwk; cd ..; cd ..; cd ..
+done
+
+#reformat the input files for null model
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+mkdir Files/Plant-rhizosphere/results/$i
+done
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+sed -i '1d' Files/Plant-rhizosphere/otu/$i-t-export/$i-t.txt; sed 's/#OTU ID//' Files/Plant-rhizosphere/otu/$i-t-export/$i-t.txt > Files/Plant-rhizosphere/results/$i/$i-t.txt
+done
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+cp Files/raw/$i.group.txt Files/Plant-rhizosphere/results/$i/$i.group.txt; cp Files/Plant-rhizosphere/rep/$i-exported-tree/$i.nwk Files/Plant-rhizosphere/results/$i/$i.nwk
+done
+
+#Calculated beta-NTI using null model 
+for i in `tail -n+2 Files/raw/Plant-rhizosphere.list`; do
+echo 'library(picante)
+source("Files/raw/bNTI.R")
+comm1<-read.table("Files/Plant-rhizosphere/results/'$i'/'$i'-t.txt", head=T)
+colnames(comm1)
+colnames(comm1)=sub("\\_","-", colnames(comm1)) 
+comm1[is.na(comm1)] <- 0
+comm1<-t(comm1)
+tree<-read.tree(file="Files/Plant-rhizosphere/results/'$i'/'$i'.nwk")
+samp.group<-read.table("Files/Plant-rhizosphere/results/'$i'/'$i'.group.txt",header=TRUE) 
+dis<-cophenetic(tree)
+spname<-rownames(dis)
+colnames(dis)=rownames(dis)
+comm<-comm1[match(spname,rownames(comm1)),1:ncol(comm1)]
+rownames(comm)<-spname
+comm<-comm[,match(samp.group[,1],colnames(comm))]
+comm<-t(comm)
+bNTI.group=bNTI(comm, dis, samp.group=samp.group, weighted=TRUE,grouping=TRUE,rand=1000,output.bMNTD=TRUE)
+write.csv(bNTI.group$betaNTI,file=" Files/Plant-rhizosphere/results/'$i'/bNTI.'$i'.csv")
+write.csv(bNTI.group$betaMNTD,file=" Files/Plant-rhizosphere/results/'$i'/bMNTD.'$i'.csv")' >>  Files/Plant-rhizosphere/results/$i/$i-bNTI.R
+done
+
+for i in `tail -n+2  Files/raw/Plant-rhizosphere.list`; do
+echo '#!/bin/bash
+/mnt/sdb/lib/miniconda/bin/Rscript (#change it to your pathway) Files/Plant-rhizosphere/results/'$i'/'$i'-bNTI.R' >>  Files/Plant-rhizosphere/results/$i/$i-R1.sh; chmod 755  Files/Plant-rhizosphere/results/$i/$i-R1.sh
+done
+
+for i in `tail -n+2  Files/raw/Plant-rhizosphere.list`; do
+echo "nohup sh  Files/Plant-rhizosphere/results/$i/$i-R1.sh >  Files/Plant-rhizosphere/results/$i/$i-R1.sh.log 2>&1 &" >>  Files/Plant-rhizosphere/Plant-rhizosphere-getNTI.sh
+done
+
+sh Files/Plant-rhizosphere/Plant-rhizosphere-getNTI.sh
+
+#Calculated RCbray using null model 
+for i in `tail -n+2  Files/raw/Plant-rhizosphere.list`; do
+echo 'library(vegan)
+library(parallel)
+source("Files/raw/RC.p.R")
+com<-read.table("Files/Plant-rhizosphere/results/'$i'/'$i'-t.txt",header=T,sep="	",row.names=1) 
+comm<-com[,colSums(com)>0]
+BC<-vegdist(comm,method="bray")
+write.csv(as.matrix(BC)," Files/Plant-rhizosphere/results/'$i'/'$i'-BC.csv")
+rc<-RC.p(comm,method="bray",rand=1000,portion=FALSE,nworker=4,memory.G=50)
+write.csv(rc," Files/Plant-rhizosphere/results/'$i'/'$i'-RC.csv")
+bNTI<-read.table(" Files/Plant-rhizosphere/results/'$i'/bNTI.'$i'.csv",header=T,sep=",",row.names=1)
+colnames(bNTI)=rownames(bNTI)
+rcc=rc[match(rownames(bNTI),rownames(rc)),match(colnames(bNTI),colnames(rc))]
+bNTI.v<-as.vector(as.dist(bNTI))
+rc.v<-as.vector(as.dist(rcc))
+id.selectna<-(bNTI.v<=2&bNTI.v>=(-2))
+num.pair<-length(bNTI.v)
+select.h<-sum(bNTI.v>2)/num.pair
+select.l<-sum(bNTI.v<(-2))/num.pair
+disper.h<-sum(rc.v[id.selectna]>0.95)/num.pair
+disper.l<-sum(rc.v[id.selectna]<(-0.95))/num.pair
+drift<-sum(rc.v[id.selectna]<=0.95&rc.v[id.selectna]>=(-0.95))/num.pair
+res=data.frame(select.h,select.l,disper.h,disper.l,drift,num.pair)
+write.csv(res," Files/Plant-rhizosphere/results/'$i'/'$i'-Processes.csv")' >>  Files/Plant-rhizosphere/results/$i/$i-process.R
+done
+
+for i in `tail -n+2  Files/raw/Plant-rhizosphere.list`; do
+echo '#!/bin/bash
+/mnt/sdb/lib/miniconda/bin/Rscript  Files/Plant-rhizosphere/results/'$i'/'$i'-process.R' >>  Files/Plant-rhizosphere/results/$i/$i-R2.sh; chmod 755  Files/Plant-rhizosphere/results/$i/$i-R2.sh
+done
+
+for i in `tail -n+2  Files/raw/Plant-rhizosphere.list`; do
+echo "nohup sh  Files/Plant-rhizosphere/results/$i/$i-R2.sh >  Files/Plant-rhizosphere/results/$i/$i-R2.sh.log 2>&1 &" >>  Files/Plant-rhizosphere/Plant-rhizosphere-process.sh
+done
+
+sh Plant-rhizosphere-process.sh

@@ -1,0 +1,47 @@
+##Contact：wangjianing@sdu.edu.cn
+
+library(ggplot2)
+library(ggpubr)
+dat <- read.table("alpha-deterministic.txt",sep="\t",header = TRUE)
+windowsFonts(TNM = windowsFont("Times New Roman"))
+p<-ggplot(data=dat, aes(x=otus, y=deterministic))+geom_point(color="black")
+p<-p+bgcolor("#FFFFFF")+border("black")
+p<-p+stat_smooth(method="lm",color="red")
+p<-p+stat_cor(data=dat, method = "spearman")
+p <- ggpar(p,xlab = "Observed ASVs",ylab = "Deterministic process (%)")
+p<- p+theme(axis.text=element_text(family = "TNM", size=16),
+            axis.title=element_text(family = "TNM", size=16))
+ggsave(p,file = "otus-deterministic.png", width = 5, height = 5, dpi = 300)
+#
+dat <- read.table("alpha-deterministic.txt",sep="\t",header = TRUE)
+windowsFonts(TNM = windowsFont("Times New Roman"))
+p<-ggplot(data=dat, aes(x=chao1, y=deterministic))+geom_point(color="black")
+p<-p+bgcolor("#FFFFFF")+border("black")
+p<-p+stat_smooth(method="lm",color="red")
+p<-p+stat_cor(data=dat, method = "spearman")
+p <- ggpar(p,xlab = "Chao1",ylab = "Deterministic process (%)")
+p<- p+theme(axis.text=element_text(family = "TNM", size=16),
+            axis.title=element_text(family = "TNM", size=16))
+ggsave(p,file = "Chao1-deterministic.png", width = 5, height = 5, dpi = 300)
+#
+dat <- read.table("alpha-deterministic.txt",sep="\t",header = TRUE)
+windowsFonts(TNM = windowsFont("Times New Roman"))
+p<-ggplot(data=dat, aes(x=shannon, y=deterministic))+geom_point(color="black")
+p<-p+bgcolor("#FFFFFF")+border("black")
+p<-p+stat_smooth(method="lm",color="red")
+p<-p+stat_cor(data=dat, method = "spearman")
+p <- ggpar(p,xlab = "Shannon",ylab = "Deterministic process (%)")
+p<- p+theme(axis.text=element_text(family = "TNM", size=16),
+            axis.title=element_text(family = "TNM", size=16))
+ggsave(p,file = "Shannon-deterministic.png", width = 5, height = 5, dpi = 300)
+#
+dat <- read.table("alpha-deterministic.txt",sep="\t",header = TRUE)
+windowsFonts(TNM = windowsFont("Times New Roman"))
+p<-ggplot(data=dat, aes(x=pd, y=deterministic))+geom_point(color="black")
+p<-p+bgcolor("#FFFFFF")+border("black")
+p<-p+stat_smooth(method="lm",color="red")
+p<-p+stat_cor(data=dat, method = "spearman")
+p <- ggpar(p,xlab = "Shannon",ylab = "Deterministic process (%)")
+p<- p+theme(axis.text=element_text(family = "TNM", size=16),
+            axis.title=element_text(family = "TNM", size=16))
+ggsave(p,file = "Paith's PD-deterministic.png", width = 5, height = 5, dpi = 300)

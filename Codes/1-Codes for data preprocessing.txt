@@ -1,0 +1,19 @@
+##Contact：wangjianing@sdu.edu.cn
+
+##download
+"emp_deblur_90bp.subset_10k.rare_5000.biom" was acquired from: http://ftp.microbio.me/emp/release1/otu_tables/deblur/, which contained 10,000 globally-collected samples and 262,011 ASVs. 
+"emp_qiime_mapping_subset_10k.tsv" was acquired from: http://ftp.microbio.me/emp/release1/mapping_files/, which contained sample information (EMP ontology) and alpha diversity indices. 
+
+## Data preparation mainly depended on QIIME2 (https://qiime2.org/)##
+#import
+qiime tools import --input-path Files/otu-table/emp_deblur_90bp.subset_10k.rare_5000.biom --type 'FeatureTable[Frequency]' --input-format BIOMV210Format --output-path Files/otu-table/all-202611-filtered-table.qza
+
+#filtered using EMPO (take "Plant rhizosphere" as an example)
+qiime feature-table filter-samples --i-table Files/otu-table/all-202611-filtered-table.qza --m-metadata-file Files/raw/emp_qiime_mapping_subset_10k.tsv --p-where "empo_3='Plant rhizosphere'" --o-filtered-table Files/otu-table/Plant-rhizosphere-filtered-table.qza
+
+#export
+qiime tools export --input-path Files/otu-table/Plant-rhizosphere-filtered-table.qza --output-path Files/otu-table/Plant-rhizosphere-export
+biom convert -i Files/otu-table/Plant-rhizosphere-export/feature-table.biom -o Files/otu-table/Plant-rhizosphere-export/Plant-rhizosphere-filtered-table.txt --to-tsv
+
+##"Plant-rhizosphere-filtered-table.txt"  contained sample IDs (column names) and ASVs' sequences (row names). which was the main file for the null model to quantify the community assembly, 
+##Just "Plant-rhizosphere" in the code to get the ASV-table for another environment (such as Animal surface, Water (saline)).
